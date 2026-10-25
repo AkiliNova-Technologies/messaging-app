@@ -1,0 +1,33 @@
+[package]
+name = "securelan-messenger"
+version = "0.1.0"
+description = "Secure LAN messaging desktop client"
+authors = ["SecureLAN Messenger contributors"]
+license = ""
+repository = ""
+edition = "2024"
+rust-version = "1.90"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "securelan_messenger_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.3", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.12.4", features = [] }
+tauri-plugin-log = "2"
+keyring = { version = "3.6", features = ["sync-secret-service"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots"] }
+sha2 = "0.10"
+tokio = { version = "1", features = ["sync", "time"] }
+tokio-tungstenite = { version = "0.28", default-features = false, features = ["connect", "rustls-tls-native-roots"] }
+futures-util = "0.3"
+rusqlite = { version = "0.32", features = ["bundled-sqlcipher-vendored-openssl"] }
+getrandom = "0.3"

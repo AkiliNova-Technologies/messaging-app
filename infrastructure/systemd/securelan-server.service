@@ -1,0 +1,34 @@
+[Unit]
+Description=SecureLAN Messenger Server
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=securelan
+Group=securelan
+WorkingDirectory=/opt/securelan
+EnvironmentFile=/etc/securelan/server.env
+ExecStart=/usr/bin/java -jar /opt/securelan/securelan-server.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=45s
+TimeoutStopSec=30s
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/securelan
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

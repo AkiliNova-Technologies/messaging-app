@@ -1,0 +1,9 @@
+// Permit only designated local operators to start the fixed SecureLAN unit.
+polkit.addRule(function(action, subject) {
+  if (action.id == "org.freedesktop.systemd1.manage-units" &&
+      action.lookup("unit") == "securelan-server.service" &&
+      action.lookup("verb") == "start" &&
+      subject.isInGroup("securelan-operators")) {
+    return polkit.Result.YES;
+  }
+});

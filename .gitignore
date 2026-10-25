@@ -1,0 +1,15 @@
+.env
+.env.local
+*.log
+.idea/
+.vscode/
+.DS_Store
+desktop/node_modules/
+desktop/dist/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+server/target/
+*.key.pem
+*.csr.pem
+*.p12
+*.srl
