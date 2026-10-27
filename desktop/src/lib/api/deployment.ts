@@ -4,7 +4,7 @@ import type { ServerConnection } from '@/types/connection'
 
 export interface BackendStartup {
   mode: 'CLIENT_DESKTOP' | 'SERVER_DESKTOP'
-  state: 'READY' | 'STARTED' | 'REMOTE_UNAVAILABLE'
+  state: 'READY' | 'REMOTE_UNAVAILABLE' | 'BOOT_MANAGED_UNAVAILABLE'
 }
 export const ensureBackendStarted = (connection: ServerConnection) =>
   invoke<BackendStartup>('ensure_backend_started', {

@@ -13,3 +13,7 @@ server/target/
 *.csr.pem
 *.p12
 *.srl
+infrastructure/docker/.env
+*.dump
+*.dump.sha256
+.docker-verify/

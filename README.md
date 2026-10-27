@@ -88,6 +88,8 @@ The Phase 1B API, ordering, idempotency, reconnect, and future-encryption bounda
 
 Encrypted local caching, bounded offline access, and the operator-installed server-desktop startup model are documented in [docs/phase-2a-persistence-and-startup.md](docs/phase-2a-persistence-and-startup.md).
 
+The production-oriented Docker Compose deployment, non-destructive PostgreSQL migration runbook, TLS mounts, and operator commands are documented in [docs/docker-deployment.md](docs/docker-deployment.md). Docker boot-time restart now supersedes desktop-triggered systemd startup for the container deployment.
+
 Quality/build commands:
 
 ```bash

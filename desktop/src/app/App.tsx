@@ -55,16 +55,7 @@ export function App() {
       return
     }
     try {
-      const deployment = await deploymentStatus(saved)
-      if (
-        deployment.mode === 'SERVER_DESKTOP' &&
-        deployment.state === 'REMOTE_UNAVAILABLE'
-      )
-        auth.set(
-          'SERVER_STARTING',
-          null,
-          'Starting the local SecureLAN service…',
-        )
+      await deploymentStatus(saved)
       await ensureBackendStarted(saved)
       await checkHealth(saved)
     } catch (reason) {
@@ -128,16 +119,12 @@ export function App() {
     await closeCache()
     auth.set('UNAUTHENTICATED')
   }
-  if (auth.state === 'INITIALIZING' || auth.state === 'SERVER_STARTING')
+  if (auth.state === 'INITIALIZING')
     return (
       <main className="grid min-h-screen place-items-center bg-slate-950 text-white">
         <div className="text-center">
           <ShieldCheck className="mx-auto mb-3 h-10 w-10 text-violet-400" />
-          <p>
-            {auth.state === 'SERVER_STARTING'
-              ? 'Starting SecureLAN server…'
-              : 'Restoring secure session…'}
-          </p>
+          <p>Restoring secure session…</p>
         </div>
       </main>
     )

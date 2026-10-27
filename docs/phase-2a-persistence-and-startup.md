@@ -1,5 +1,7 @@
 # Phase 2A: encrypted cache and backend startup
 
+> Deployment update: `docs/docker-deployment.md` supersedes the systemd startup design below for new server installations. The systemd files remain only for rollback until an approved Docker cutover. Current desktop builds do not invoke systemd or Docker; container availability is managed by Docker's boot-time restart policy.
+
 ## Security boundary
 
 The React renderer has no SQL interface and never receives a database key. Rust exposes only typed conversation/message cache commands. Each normalized `(scheme, host, port, authenticated user ID)` pair has a different 256-bit random key in the OS keyring and a different database filename. SQLCipher is compiled into the application; startup checks `cipher_version` and fails closed if encryption or the key is unavailable. There is no plaintext SQLite fallback.

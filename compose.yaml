@@ -1,0 +1,83 @@
+name: securelan
+
+services:
+  securelan-db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-securelan}
+      POSTGRES_USER: ${POSTGRES_USER:-securelan}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the Docker environment file}
+    volumes:
+      - securelan_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" -h 127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - database
+    shm_size: 128mb
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 200
+    security_opt:
+      - no-new-privileges:true
+
+  securelan-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: securelan-server:${SECURELAN_IMAGE_TAG:-local}
+    restart: unless-stopped
+    depends_on:
+      securelan-db:
+        condition: service_healthy
+        restart: true
+    environment:
+      DATABASE_URL: jdbc:postgresql://securelan-db:5432/${POSTGRES_DB:-securelan}
+      DATABASE_USER: ${POSTGRES_USER:-securelan}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the Docker environment file}
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+      SERVER_SSL_ENABLED: "true"
+      SERVER_SSL_KEY_STORE: /run/secrets/server.p12
+      SERVER_SSL_KEY_STORE_PASSWORD: ${SERVER_SSL_KEY_STORE_PASSWORD:?set SERVER_SSL_KEY_STORE_PASSWORD in the Docker environment file}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://tauri.localhost,tauri://localhost}
+      SESSION_LIFETIME: ${SESSION_LIFETIME:-7d}
+      HEALTHCHECK_HOST: ${SECURELAN_TLS_HOSTNAME:?set SECURELAN_TLS_HOSTNAME to a certificate SAN}
+    volumes:
+      - type: bind
+        source: ${SECURELAN_TLS_KEYSTORE:?set SECURELAN_TLS_KEYSTORE to the absolute server.p12 path}
+        target: /run/secrets/server.p12
+        read_only: true
+      - type: bind
+        source: ${SECURELAN_CA_CERT:?set SECURELAN_CA_CERT to the absolute public CA certificate path}
+        target: /run/secrets/ca.crt.pem
+        read_only: true
+    ports:
+      - "${SECURELAN_HTTPS_BIND_ADDRESS:-0.0.0.0}:${SECURELAN_HTTPS_PORT:-8080}:8080"
+    networks:
+      - database
+      - lan
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    mem_limit: 768m
+    cpus: 1.0
+    pids_limit: 200
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  securelan_pgdata:
+    name: ${SECURELAN_POSTGRES_VOLUME:-securelan_pgdata}
+
+networks:
+  database:
+    internal: true
+  lan:

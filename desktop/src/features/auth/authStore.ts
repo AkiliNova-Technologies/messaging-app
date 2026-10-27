@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import type { User } from '@/lib/api/auth'
 export type AuthState =
   | 'INITIALIZING'
-  | 'SERVER_STARTING'
   | 'UNAUTHENTICATED'
   | 'AUTHENTICATED'
   | 'OFFLINE_AUTHENTICATED'

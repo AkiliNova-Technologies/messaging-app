@@ -1,8 +1,6 @@
 use crate::{client, network_error, validate_server_url};
 use serde::Serialize;
-use std::{process::Command, time::Duration};
-
-const SERVICE_NAME: &str = "securelan-server.service";
+use std::time::Duration;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,6 +18,10 @@ fn mode() -> Result<&'static str, String> {
         "SERVER_DESKTOP" => Ok("SERVER_DESKTOP"),
         _ => Err("INVALID_DEPLOYMENT_MODE".into()),
     }
+}
+
+fn desktop_process_launch_enabled() -> bool {
+    false
 }
 
 async fn ready(base_url: &str) -> Result<bool, String> {
@@ -65,23 +67,11 @@ pub async fn ensure_backend_started(base_url: String) -> Result<BackendStartup, 
             state: "REMOTE_UNAVAILABLE",
         });
     }
-    let status = Command::new("/usr/bin/systemctl")
-        .args(["start", SERVICE_NAME])
-        .status()
-        .map_err(|_| "SERVICE_MANAGER_UNAVAILABLE")?;
-    if !status.success() {
-        return Err("BACKEND_START_FAILED".into());
-    }
-    for _ in 0..20 {
-        if ready(&server.base_url).await? {
-            return Ok(BackendStartup {
-                mode: deployment_mode,
-                state: "STARTED",
-            });
-        }
-        tokio::time::sleep(Duration::from_millis(500)).await;
-    }
-    Err("BACKEND_READINESS_TIMEOUT".into())
+    debug_assert!(!desktop_process_launch_enabled());
+    Ok(BackendStartup {
+        mode: deployment_mode,
+        state: "BOOT_MANAGED_UNAVAILABLE",
+    })
 }
 
 #[cfg(test)]
@@ -95,7 +85,7 @@ mod tests {
     }
 
     #[test]
-    fn fixed_service_name_cannot_come_from_renderer() {
-        assert_eq!(SERVICE_NAME, "securelan-server.service");
+    fn server_startup_is_not_exposed_to_the_renderer() {
+        assert!(!desktop_process_launch_enabled());
     }
 }
