@@ -19,7 +19,9 @@ openssl req -new -sha384 -key "$output_dir/server.key.pem" -out "$output_dir/ser
 openssl x509 -req -sha384 -days 397 -in "$output_dir/server.csr.pem" -CA "$ca_dir/ca.crt.pem" \
   -CAkey "$ca_dir/ca.key.pem" -CAcreateserial -out "$output_dir/server.crt.pem" -extfile "$config_file" -extensions server_ext
 cat "$ca_dir/ca.crt.pem" > "$output_dir/ca.crt.pem"
+passout=()
+if [[ -n "${SECURELAN_P12_PASSWORD:-}" ]]; then passout=(-passout env:SECURELAN_P12_PASSWORD); fi
 openssl pkcs12 -export -name securelan-server -inkey "$output_dir/server.key.pem" -in "$output_dir/server.crt.pem" \
-  -certfile "$ca_dir/ca.crt.pem" -out "$output_dir/server.p12"
+  -certfile "$ca_dir/ca.crt.pem" -out "$output_dir/server.p12" "${passout[@]}"
 chmod 600 "$output_dir/server.key.pem" "$output_dir/server.csr.pem" "$output_dir/server.crt.pem" "$output_dir/server.p12" "$output_dir/ca.crt.pem"
 echo "Certificate issued for SANs: $san"

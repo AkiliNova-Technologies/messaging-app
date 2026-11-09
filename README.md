@@ -1,6 +1,6 @@
 # SecureLAN Messenger
 
-SecureLAN Messenger is a cross-platform, offline-first desktop messenger for small organizations on a local network. Phase 1B adds persistent real-time one-to-one text messaging; end-to-end encryption is not implemented.
+SecureLAN Messenger is a cross-platform, offline-first desktop messenger for small organizations on a local network. Includes persistent one-to-one text messaging and an initial 8 MiB attachment feature (images, short video/audio clips, and common documents). End-to-end encryption is not implemented.
 
 ## Stack and layout
 
@@ -28,6 +28,10 @@ npm install
 ```
 
 Export values from `.env` in the shell that starts the backend; Spring does not implicitly load dotenv files.
+
+## Fresh Docker server installation
+
+For a new, empty server, follow [docs/fresh-machine-setup.md](docs/fresh-machine-setup.md). The setup script prepares the root `.env`, private CA, and TLS files; it does not migrate an existing database. For migrations, follow [docs/docker-deployment.md](docs/docker-deployment.md).
 
 ## PostgreSQL development setup
 
