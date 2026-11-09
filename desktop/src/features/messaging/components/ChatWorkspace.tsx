@@ -14,7 +14,7 @@ interface Props {
   mobileVisible: boolean
   onSend: (text: string) => Promise<void>
   onSendAttachment: (file: File) => Promise<void>
-  onOpenAttachment: (message: Message) => Promise<void>
+  onOpenAttachment: (message: Message) => Promise<{ url: string; contentType: string; fileName: string } | null>
   attachmentBusy: boolean
   onLoadOlder: () => void
   hasOlder: boolean
@@ -40,7 +40,12 @@ export function ChatWorkspace({
   const bottom = useRef<HTMLDivElement>(null)
   const picker = useRef<HTMLInputElement>(null)
   const [fileError, setFileError] = useState('')
+  const [preview, setPreview] = useState<{ url: string; contentType: string; fileName: string } | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
   const displayed = messages.filter((m) => m.conversationId === conversation.id)
+  useEffect(() => {
+    return () => { if(preview) URL.revokeObjectURL(preview.url) }
+  }, [preview])
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: 'smooth' })
   }, [displayed.length, conversation.id])
@@ -54,6 +59,18 @@ export function ChatWorkspace({
       setDraft(body)
     }
   }
+  async function open(m: Message) {
+    if(previewLoading)return
+    setFileError('')
+    setPreviewLoading(true)
+    try {
+      const received=await onOpenAttachment(m)
+      if(received) setPreview(received)
+    } catch(reason) {
+      setFileError(reason instanceof Error ? reason.message : 'Unable to open attachment')
+    } finally { setPreviewLoading(false) }
+  }
+  function closePreview() { setPreview(null) }
   async function chosen(e: ChangeEvent<HTMLInputElement>) {
     const file=e.target.files?.[0]
     e.target.value=''
@@ -137,15 +154,15 @@ export function ChatWorkspace({
                   {m.attachment ? (
                     <button
                       type="button"
-                      onClick={() => void onOpenAttachment(m)}
+                      onClick={() => void open(m)}
                       className="flex items-center gap-2 text-left underline-offset-2 hover:underline"
-                      title="Open or save attachment"
+                      title="Preview or download attachment"
                     >
                       <FileText size={17} />
                       <span className="min-w-0 break-all">
                         {m.attachment.fileName}
                         <span className="block text-[11px] opacity-75">
-                          {(m.attachment.sizeBytes / 1024).toFixed(0)} KB · Open or save
+                          {(m.attachment.sizeBytes / 1024).toFixed(0)} KB · Preview or download
                         </span>
                       </span>
                       <Download size={15} />
@@ -225,6 +242,28 @@ export function ChatWorkspace({
           </p>
         )}
       </div>
+      {preview && (
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-label="Attachment preview" onClick={closePreview}>
+          <div className="w-full max-w-3xl rounded-xl bg-white p-4 shadow-2xl dark:bg-slate-900" onClick={e => e.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <p className="truncate text-sm font-semibold">{preview.fileName}</p>
+              <div className="flex items-center gap-3">
+                <a href={preview.url} download={preview.fileName} className="text-sm font-semibold text-violet-600 hover:underline">Save file</a>
+                <button type="button" onClick={closePreview} aria-label="Close attachment preview" className="rounded-lg border px-3 py-1.5 text-sm dark:border-slate-700">Close</button>
+              </div>
+            </div>
+            {preview.contentType.startsWith('image/') ? (
+              <img src={preview.url} alt={preview.fileName} className="mx-auto max-h-[70vh] max-w-full rounded-lg object-contain" />
+            ) : preview.contentType.startsWith('video/') ? (
+              <video src={preview.url} controls className="max-h-[70vh] w-full rounded-lg" />
+            ) : preview.contentType.startsWith('audio/') ? (
+              <audio src={preview.url} controls className="w-full" />
+            ) : (
+              <div className="py-12 text-center text-sm text-slate-600 dark:text-slate-300">Preview is unavailable for this file type. Use Save file to open it in another application.</div>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   )
 }

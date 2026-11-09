@@ -328,10 +328,10 @@ export function MessagingWorkspace({ current }: { current: User }) {
     } finally {setAttachmentBusy(false)}
   }
   async function openAttachment(m: Message) {
-    if(!m.attachment)return
+    if(!m.attachment)return null
     if(offline || !connection) {
       setError('Reconnect to the server to open attachments.')
-      return
+      return null
     }
     setAttachmentBusy(true)
     try {
@@ -341,15 +341,11 @@ export function MessagingWorkspace({ current }: { current: User }) {
       for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i)
       const blob=new Blob([bytes],{type:file.contentType})
       const url=URL.createObjectURL(blob)
-      const link=document.createElement('a')
-      link.href=url
-      link.download=file.fileName
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.setTimeout(()=>URL.revokeObjectURL(url),30000)
+      return { url, contentType: file.contentType, fileName: file.fileName }
     } catch(reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to open attachment')
+      const detail=reason instanceof Error ? reason.message : 'Unable to open attachment'
+      setError(detail)
+      throw new Error(detail)
     } finally {setAttachmentBusy(false)}
   }
   const active = conversations.find((c) => c.id === selected)
