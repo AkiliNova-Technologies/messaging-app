@@ -8,13 +8,25 @@ export interface PublicUser {
   username: string
   avatarInitials: string
 }
+export interface AttachmentMeta {
+  id: string
+  fileName: string
+  contentType: string
+  sizeBytes: number
+}
+export interface AttachmentDownload {
+  fileName: string
+  contentType: string
+  dataBase64: string
+}
 export interface ApiMessage {
   id: string
   conversationId: string
   senderId: string
   clientRequestId: string
   serverSequence: number
-  payloadType: 'TEXT'
+  payloadType: 'TEXT' | 'ATTACHMENT'
+  attachment?: AttachmentMeta | null
   text: string
   createdAt: string
 }
@@ -95,3 +107,26 @@ export async function onRealtime(
     b()
   }
 }
+
+export const sendAttachment = (
+  c: ServerConnection,
+  conversationId: string,
+  clientRequestId: string,
+  fileName: string,
+  contentType: string,
+  dataBase64: string,
+) =>
+  api<ApiMessage>(c, 'POST', `/api/v1/conversations/${conversationId}/attachments`, {
+    clientRequestId,
+    fileName,
+    contentType,
+    dataBase64,
+  })
+
+export const downloadAttachment = (
+  c: ServerConnection,
+  conversationId: string,
+  attachmentId: string,
+) =>
+  api<AttachmentDownload>(c, 'GET',
+    `/api/v1/conversations/${conversationId}/attachments/${attachmentId}`)

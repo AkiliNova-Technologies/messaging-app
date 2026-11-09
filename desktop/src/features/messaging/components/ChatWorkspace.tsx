@@ -1,5 +1,5 @@
-import { ArrowLeft, Check, Info, Send } from 'lucide-react'
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { ArrowLeft, Check, Download, FileText, Info, Paperclip, Send } from 'lucide-react'
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import { Avatar } from '@/features/messaging/components/Avatar'
 import type {
   Conversation,
@@ -13,6 +13,9 @@ interface Props {
   onToggleInfo: () => void
   mobileVisible: boolean
   onSend: (text: string) => Promise<void>
+  onSendAttachment: (file: File) => Promise<void>
+  onOpenAttachment: (message: Message) => Promise<void>
+  attachmentBusy: boolean
   onLoadOlder: () => void
   hasOlder: boolean
   sending: boolean
@@ -25,6 +28,9 @@ export function ChatWorkspace({
   onToggleInfo,
   mobileVisible,
   onSend,
+  onSendAttachment,
+  onOpenAttachment,
+  attachmentBusy,
   onLoadOlder,
   hasOlder,
   sending,
@@ -32,6 +38,8 @@ export function ChatWorkspace({
 }: Props) {
   const [draft, setDraft] = useState('')
   const bottom = useRef<HTMLDivElement>(null)
+  const picker = useRef<HTMLInputElement>(null)
+  const [fileError, setFileError] = useState('')
   const displayed = messages.filter((m) => m.conversationId === conversation.id)
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: 'smooth' })
@@ -45,6 +53,18 @@ export function ChatWorkspace({
     } catch {
       setDraft(body)
     }
+  }
+  async function chosen(e: ChangeEvent<HTMLInputElement>) {
+    const file=e.target.files?.[0]
+    e.target.value=''
+    if(!file)return
+    if(file.size > 8*1024*1024 || file.size===0) {
+      setFileError('Attachments must be between 1 byte and 8 MiB.')
+      return
+    }
+    setFileError('')
+    try { await onSendAttachment(file) }
+    catch (reason) { setFileError(reason instanceof Error ? reason.message : 'Upload failed') }
   }
   function keyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -114,7 +134,23 @@ export function ChatWorkspace({
                       : 'rounded-bl-md border bg-white dark:border-slate-800 dark:bg-slate-900',
                   )}
                 >
-                  {m.body}
+                  {m.attachment ? (
+                    <button
+                      type="button"
+                      onClick={() => void onOpenAttachment(m)}
+                      className="flex items-center gap-2 text-left underline-offset-2 hover:underline"
+                      title="Open or save attachment"
+                    >
+                      <FileText size={17} />
+                      <span className="min-w-0 break-all">
+                        {m.attachment.fileName}
+                        <span className="block text-[11px] opacity-75">
+                          {(m.attachment.sizeBytes / 1024).toFixed(0)} KB · Open or save
+                        </span>
+                      </span>
+                      <Download size={15} />
+                    </button>
+                  ) : m.body}
                 </div>
                 <span
                   className={cn(
@@ -137,7 +173,25 @@ export function ChatWorkspace({
         </div>
       </div>
       <div className="shrink-0 border-t p-3 dark:border-slate-800">
+        <input
+          ref={picker}
+          type="file"
+          className="hidden"
+          aria-label="Select attachment"
+          accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,audio/mpeg,audio/wav,audio/ogg,audio/webm,application/pdf,text/plain,.docx,.xlsx"
+          onChange={(event) => void chosen(event)}
+        />
         <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-xl border bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900">
+          <button
+            type="button"
+            onClick={() => picker.current?.click()}
+            disabled={sending || attachmentBusy}
+            aria-label="Attach file"
+            title="Attach image, video, audio or document (up to 8 MiB)"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-600 hover:bg-slate-200 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            <Paperclip size={18}/>
+          </button>
           <textarea
             value={draft}
             maxLength={4000}
@@ -159,8 +213,9 @@ export function ChatWorkspace({
           </button>
         </div>
         <p className="mx-auto mt-2 max-w-3xl text-[10px] text-slate-400">
-          Enter to send · Shift + Enter for a new line · {draft.length}/4000
+          Enter to send · Shift + Enter for a new line · {draft.length}/4000 · Attachments up to 8 MiB
         </p>
+        {fileError && <p role="alert" className="mx-auto mt-1 max-w-3xl text-xs text-red-600">{fileError}</p>}
         {error && (
           <p
             role="alert"

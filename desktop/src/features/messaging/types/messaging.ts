@@ -28,6 +28,12 @@ export interface Message {
   delivery?: 'sending' | 'sent' | 'failed'
   clientRequestId?: string
   serverSequence: number
+  attachment?: {
+    id: string
+    fileName: string
+    contentType: string
+    sizeBytes: number
+  } | null
 }
 
 export interface SharedFile {

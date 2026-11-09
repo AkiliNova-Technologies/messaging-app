@@ -12,6 +12,8 @@ import {
   listMessages,
   onRealtime,
   sendMessage,
+  sendAttachment,
+  downloadAttachment,
   startRealtime,
   stopRealtime,
   type ApiConversation,
@@ -74,6 +76,7 @@ function message(m: ApiMessage, current: string): Message {
     delivery: 'sent',
     clientRequestId: m.clientRequestId,
     serverSequence: m.serverSequence,
+    attachment: m.attachment,
   }
 }
 function merge(existing: Message[], incoming: Message[]) {
@@ -105,6 +108,7 @@ export function MessagingWorkspace({ current }: { current: User }) {
     connection ? '' : 'Configure a server connection.',
   )
   const [sending, setSending] = useState(false)
+  const [attachmentBusy, setAttachmentBusy] = useState(false)
   const [realtime, setRealtime] = useState<RealtimeState>('DISCONNECTED')
   useEffect(() => {
     selectedRef.current = selected
@@ -293,6 +297,61 @@ export function MessagingWorkspace({ current }: { current: User }) {
       setSending(false)
     }
   }
+  async function attach(file: File) {
+    if(offline) throw new Error('Attachments require a connection to the server.')
+    if(!connection || !selected) throw new Error('Select a conversation first.')
+    if(sending || attachmentBusy) throw new Error('Another upload is in progress.')
+    if(file.size===0 || file.size>8*1024*1024)throw new Error('Maximum attachment size is 8 MiB.')
+    setAttachmentBusy(true)
+    setError('')
+    const conversationId=selected
+    try {
+      const dataBase64=await new Promise<string>((resolve,reject)=>{
+        const reader=new FileReader()
+        reader.onload=()=>{
+          const result=reader.result
+          if(typeof result !== 'string')return reject(new Error('Unable to read attachment'))
+          resolve(result.slice(result.indexOf(',')+1))
+        }
+        reader.onerror=()=>reject(new Error('Unable to read attachment'))
+        reader.readAsDataURL(file)
+      })
+      const saved=await sendAttachment(connection,conversationId,crypto.randomUUID(),
+        file.name,file.type || 'application/octet-stream',dataBase64)
+      await storeCachedMessages(connection,current.id,[saved])
+      setMessages(value=>({...value,
+        [conversationId]:merge(value[conversationId]??[],[message(saved,current.id)])}))
+      await refresh()
+    } catch(reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to send attachment')
+      throw reason
+    } finally {setAttachmentBusy(false)}
+  }
+  async function openAttachment(m: Message) {
+    if(!m.attachment)return
+    if(offline || !connection) {
+      setError('Reconnect to the server to open attachments.')
+      return
+    }
+    setAttachmentBusy(true)
+    try {
+      const file=await downloadAttachment(connection,m.conversationId,m.attachment.id)
+      const binary=atob(file.dataBase64)
+      const bytes=new Uint8Array(binary.length)
+      for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i)
+      const blob=new Blob([bytes],{type:file.contentType})
+      const url=URL.createObjectURL(blob)
+      const link=document.createElement('a')
+      link.href=url
+      link.download=file.fileName
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(()=>URL.revokeObjectURL(url),30000)
+    } catch(reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to open attachment')
+    } finally {setAttachmentBusy(false)}
+  }
   const active = conversations.find((c) => c.id === selected)
   return (
     <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-white dark:bg-slate-950">
@@ -318,6 +377,9 @@ export function MessagingWorkspace({ current }: { current: User }) {
             }}
             mobileVisible
             onSend={send}
+            onSendAttachment={attach}
+            onOpenAttachment={openAttachment}
+            attachmentBusy={attachmentBusy}
             onLoadOlder={() => void loadOlder()}
             hasOlder={Boolean(cursors[selected])}
             sending={sending}
