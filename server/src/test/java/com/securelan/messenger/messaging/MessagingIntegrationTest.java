@@ -76,6 +76,37 @@ class MessagingIntegrationTest {
   admin.status(bob.getId(),new UpdateStatusRequest(UserStatus.DISABLED));assertEquals(401,request("GET","/api/v1/conversations",bobToken,null).statusCode());
   aliceWs.socket.abort();carolWs.socket.abort();
  }
+
+ @Test void attachmentsAreBoundToParticipantsAndIdempotency() throws Exception {
+  var created=request("POST","/api/v1/conversations",aliceToken,Map.of("participantId",bob.getId()));
+  assertEquals(200,created.statusCode());
+  var conversation=json.readTree(created.body()).get("id").asText();
+  var attachmentPath="/api/v1/conversations/"+conversation+"/attachments";
+  var requestId=UUID.randomUUID();
+  var payload=Map.of(
+   "clientRequestId",requestId,
+   "fileName","testing.txt",
+   "contentType","text/plain",
+   "dataBase64",Base64.getEncoder().encodeToString("sample contents".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+  );
+  var uploaded=request("POST",attachmentPath,aliceToken,payload);
+  assertEquals(201,uploaded.statusCode());
+  var attachment=json.readTree(uploaded.body()).get("attachment");
+  assertEquals("testing.txt",attachment.get("fileName").asText());
+  var attachmentId=attachment.get("id").asText();
+  var downloadPath=attachmentPath+"/"+attachmentId;
+  assertEquals(403,request("GET",downloadPath,carolToken,null).statusCode());
+  var data=json.readTree(request("GET",downloadPath,bobToken,null).body());
+  assertEquals(payload.get("dataBase64"),data.get("dataBase64").asText());
+  var repeated=request("POST",attachmentPath,aliceToken,payload);
+  assertEquals(json.readTree(uploaded.body()).get("id").asText(),json.readTree(repeated.body()).get("id").asText());
+  var changed=Map.of("clientRequestId",requestId,"fileName","modified.txt","contentType","text/plain","dataBase64",payload.get("dataBase64"));
+  assertEquals(409,request("POST",attachmentPath,aliceToken,changed).statusCode());
+  assertEquals(403,request("POST",attachmentPath,carolToken,payload).statusCode());
+  var spoofed=Map.of("clientRequestId",UUID.randomUUID(),"fileName","unsafe.png","contentType","image/png","dataBase64",payload.get("dataBase64"));
+  assertEquals(400,request("POST",attachmentPath,aliceToken,spoofed).statusCode());
+  assertTrue(request("GET","/api/v1/conversations/"+conversation+"/messages",bobToken,null).body().contains(attachmentId));
+ }
  private UUID sessionId(String token){return authSession(token).sessionId();}
  @Autowired SessionAuthenticationService sessionAuth;
  private AuthPrincipal authSession(String token){return sessionAuth.validate(token).principal().orElseThrow();}

@@ -53,7 +53,7 @@ function conversation(c: ApiConversation): Conversation {
   return {
     id: c.id,
     employee: employee(c.participant),
-    preview: c.lastMessage?.text ?? 'No messages yet',
+    preview: c.lastMessage?.attachment ? `📎 ${c.lastMessage.attachment.fileName}` : c.lastMessage?.text ?? 'No messages yet',
     timestamp: c.lastMessage
       ? new Date(c.lastMessage.createdAt).toLocaleTimeString([], {
           hour: '2-digit',
@@ -387,7 +387,12 @@ export function MessagingWorkspace({ current }: { current: User }) {
           />
           <ConversationInfo
             conversation={active}
-            files={[]}
+            files={(messages[selected] ?? []).filter(m => Boolean(m.attachment)).map(m => ({
+              id: m.attachment!.id,
+              name: m.attachment!.fileName,
+              meta: `${(m.attachment!.sizeBytes / 1024).toFixed(0)} KB`,
+              kind: m.attachment!.contentType.startsWith('image/') ? 'image' as const : 'document' as const,
+            }))}
             open={info}
             onClose={() => {
               setInfo(false)
