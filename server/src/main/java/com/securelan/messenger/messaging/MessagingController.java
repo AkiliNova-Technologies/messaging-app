@@ -14,6 +14,8 @@ public class MessagingController {
  @GetMapping("/{id}") public MessagingService.ConversationView get(@AuthenticationPrincipal AuthPrincipal p,@PathVariable UUID id){return service.get(id,p.userId());}
  @GetMapping("/{id}/messages") public MessagingService.MessagePage messages(@AuthenticationPrincipal AuthPrincipal p,@PathVariable UUID id,@RequestParam(required=false) Long before,@RequestParam(defaultValue="50") int size){return service.history(id,p.userId(),before,size);}
  @PostMapping("/{id}/messages") public ResponseEntity<MessagingService.MessageView> send(@AuthenticationPrincipal AuthPrincipal p,@PathVariable UUID id,@Valid @RequestBody SendMessage r){return ResponseEntity.status(HttpStatus.CREATED).body(service.send(id,p.userId(),r.clientRequestId(),r.payloadType(),r.text()));}
+ @PostMapping("/{id}/attachments") public ResponseEntity<MessagingService.MessageView> upload(@AuthenticationPrincipal AuthPrincipal p,@PathVariable UUID id,@RequestBody MessagingService.AttachmentInput r){return ResponseEntity.status(HttpStatus.CREATED).body(service.sendAttachment(id,p.userId(),r));}
+ @GetMapping("/{id}/attachments/{attachmentId}") public MessagingService.AttachmentDownload download(@AuthenticationPrincipal AuthPrincipal p,@PathVariable UUID id,@PathVariable UUID attachmentId){return service.downloadAttachment(id,attachmentId,p.userId());}
  public record CreateConversation(@NotNull UUID participantId){}
  public record SendMessage(@NotNull UUID clientRequestId,@NotBlank String payloadType,@NotNull @Size(max=4000) String text){}
 }

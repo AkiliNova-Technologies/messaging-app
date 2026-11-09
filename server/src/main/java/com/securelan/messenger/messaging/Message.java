@@ -16,9 +16,9 @@ public class Message {
     @Column(name="payload_fingerprint", nullable=false, length=64) private String payloadFingerprint;
     @Column(name="created_at", nullable=false) private Instant createdAt;
     protected Message() {}
-    public Message(UUID conversationId, UUID senderId, UUID clientRequestId, long sequence, String payload, String fingerprint) {
+    public Message(UUID conversationId, UUID senderId, UUID clientRequestId, long sequence, String type, String payload, String fingerprint) {
         id=UUID.randomUUID(); this.conversationId=conversationId; this.senderId=senderId; this.clientRequestId=clientRequestId;
-        serverSequence=sequence; payloadType="TEXT"; this.payload=payload; payloadFingerprint=fingerprint; createdAt=Instant.now();
+        serverSequence=sequence; payloadType=type; this.payload=payload; payloadFingerprint=fingerprint; createdAt=Instant.now();
     }
     public UUID getId(){return id;} public UUID getConversationId(){return conversationId;} public UUID getSenderId(){return senderId;}
     public UUID getClientRequestId(){return clientRequestId;} public long getServerSequence(){return serverSequence;}

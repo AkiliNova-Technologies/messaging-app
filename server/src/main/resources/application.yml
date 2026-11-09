@@ -19,6 +19,8 @@ spring:
     timeout-per-shutdown-phase: 20s
 
 server:
+  tomcat:
+    max-swallow-size: 16MB
   address: ${SERVER_HOST:127.0.0.1}
   port: ${SERVER_PORT:8080}
   shutdown: graceful
